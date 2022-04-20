@@ -2,9 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from IPython.utils import io
-import warnings
-import argparse
-import configparser
 
 import extinction
 import pysynphot as S
@@ -160,12 +157,26 @@ class supernova(object):
 
         return mags
 
-    def get_all_mags(self, times, Re, Me, ve, of):
+    def get_all_mags_without_v(self, times, Re, Me, of):
+        filters = np.array(self.reduced_df['FLT'])
+        # with io.capture_output() as captured:
+        # mjd date, of - free parameter
+        all_mags = np.array([])
+        for i in range(len(times)):
+            flt = filters[i]
+            time = times[i] - of
+            val = self.mags_per_filter(time, Re, Me, filtName=flt)
+
+            all_mags = np.append(all_mags, val)
+        return all_mags
+
+    def get_all_mags_with_v(self, times, Re, Me, ve, of):
         '''
         Set
         :param times: Times at which data is available
         :param Re: Radius of envelope
         :param Me: Mass of envelope
+        :param ve: Velocity of wave moving out
         :param of: Offset for observation time
         :return: array of all mags at specified time according to filter
         '''
@@ -182,10 +193,14 @@ class supernova(object):
         return all_mags
 
     def simple_curve_fit(self, initial_parameters: tuple, lower_bounds: tuple, upper_bounds: tuple):
+        if len(initial_parameters) == 3:
+            func = self.get_all_mags_without_v
+        else:
+            func = self.get_all_mags_with_v
         phase_combo = np.array(self.reduced_df[self.shift_date_colname])
         mag_combo = np.array(self.reduced_df[self.mag_colname])
         emag_combo = np.array(self.reduced_df[self.magerr_colname])
-        popt, pcov = opt.curve_fit(f=self.get_all_mags, xdata=phase_combo, ydata=mag_combo, p0=initial_parameters,
+        popt, pcov = opt.curve_fit(f=func, xdata=phase_combo, ydata=mag_combo, p0=initial_parameters,
                                    sigma=emag_combo, bounds=[lower_bounds, upper_bounds])
         sigma = np.sqrt(np.diag(pcov))
 
@@ -209,3 +224,55 @@ class supernova(object):
             return self.fitted_params[3], self.fitted_errors[3]
         else:
             return self.fitted_params[2], self.fitted_errors[2]
+
+    def plot_given_parameters(self, Re, Me, ve=None, of=0, errorbar=None, shift=False):
+        # print(f'Best radius = {Re}, err')
+        # print(f'Best mass = {Me}')
+        # if ve:
+        #     print(f'Best velocity = {ve}')
+        # print(f'Best offset = {of}')
+
+        fig = plt.figure(figsize=(10, 10))
+        unique_filts = self.get_filts()
+        n = len(unique_filts)
+        minmag = min(self.reduced_df[self.mag_colname]) - n // 2
+        maxmag = max(self.reduced_df[self.mag_colname]) + n // 2
+        t = np.linspace(0.01, max(self.reduced_df[self.shift_date_colname]) + 1, 100)
+
+        def build_offset(n):
+            offset = [i for i in range(-n // 2, n // 2)]
+            return offset
+
+        yerr = errorbar
+        if shift:
+            offset = build_offset(n)
+        else:
+            offset = [0] * len(unique_filts)
+        # HARDCODED
+        for flt in self.filt_to_wvl:
+            if flt in unique_filts:
+                filtered = self.reduced_df[self.reduced_df[self.flt_colname] == flt]
+                times = np.array(filtered['MJD_S']) - of
+                off = offset.pop(0)
+                mag_all = np.array(filtered[self.mag_colname]) + off
+                if errorbar != None:
+                    yerr = np.array(filtered[errorbar])
+                # print(flt)
+                # DISCRETE
+                if flt in self.color_dict:
+                    plt.errorbar(x=times, y=mag_all, yerr=yerr, fmt='o', markersize=14, markeredgecolor='k',
+                                 color=self.color_dict[flt], label=flt)
+                else:
+                    plt.errorbar(x=times, y=mag_all, yerr=yerr, fmt='o', markersize=14, markeredgecolor='k', label=flt)
+                # CONTINUOUS
+
+                vals = self.mags_per_filter(t, Re, Me, ve, filtName=flt) + off
+
+                plt.plot(t, vals, color=self.color_dict[flt])
+                plt.legend(loc='upper right', fontsize=20, ncol=2)
+                plt.ylim(maxmag + off, minmag - off)
+        plt.show()
+        plt.savefig('test.png')
+        return fig
+
+

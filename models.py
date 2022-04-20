@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from supernova import supernova
 import argparse
@@ -37,6 +38,9 @@ class SW_RSG(supernova):
         print(f'Ve = {self.get_sc_VE()[0] * 1e9 * 1e-5} +/- {self.get_sc_VE()[1] * 1e9 * 1e-5} km/s')
         print(f'Offset = {self.get_sc_OF()[0]} +/- {self.get_sc_OF()[1]}')
 
+    def plot(self):
+        self.plot_given_parameters(self.get_sc_RE()[0], self.get_sc_ME()[0], ve = self.get_sc_VE()[0], of=self.get_sc_OF()[0], shift=True)
+
 
 class SW_BSG(supernova):
     def __init__(self, d):
@@ -68,6 +72,8 @@ class SW_BSG(supernova):
         print(f'Ve = {self.get_sc_VE()[0] * 1e9 * 1e-5} +/- {self.get_sc_VE()[1] * 1e9 * 1e-5} km/s')
         print(f'Offset = {self.get_sc_OF()[0]} +/- {self.get_sc_OF()[1]}')
 
+    def plot(self):
+        self.plot_given_parameters(self.get_sc_RE()[0], self.get_sc_ME()[0], ve = self.get_sc_VE()[0], of=self.get_sc_OF()[0], shift=True)
 
 # class SW_RSG(supernova):
 #     def __init__(self, d):
@@ -80,7 +86,6 @@ class PIRO_2015(supernova):
         self.set_model()
         self.name = 'Piro 2015'
 
-    def get_all_mags(self, times, Re, Me, of):
 
     def L_P15(self, t, Re, Me, k=0.2):
         def tp(Esn, Mc, Me, k):
@@ -110,17 +115,25 @@ class PIRO_2015(supernova):
     def set_model(self):
         self.model = self.L_P15
 
-    def get_fitted_values(self):
+    def get_fitted_values(self, initial = (100, 0.01, 0.1), lower_bounds = (0.1, 0.0001, 0.0), upper_bounds =(500.0, 1.0, 2.0)):
         self.set_model()
-        self.simple_curve_fit((100, 0.01, 0.1), (0.1, 0.0001, 0.0), (500.0, 1.0, 2.0))
+        #allow
+        self.simple_curve_fit(initial, lower_bounds, upper_bounds)
         print(f'{self.name} model simple curve fitted values:')
         print(f'Re = {self.get_sc_RE()[0]} +/- {self.get_sc_RE()[1]}')
         print(f'Me = {self.get_sc_ME()[0]} +/- {self.get_sc_ME()[1]}')
         print(f'Offset = {self.get_sc_OF()[0]} +/- {self.get_sc_OF()[1]}')
 
+
     def f_lam(self, lam, R, T):
         return (np.pi / (self.dsn ** 2)) * (R ** 2) * (self.BB_lam(lam, T))  # ergs/ s / Ang.
 
+    def plot(self):
+        self.plot_given_parameters(self.get_sc_RE()[0], self.get_sc_ME()[0], of=self.get_sc_OF()[0], shift=True)
+        #print(f)
+        #print('whats in f')
+        #f.show()
+        #f.savefig('test.png')
 
 def parse_args():
     """
@@ -166,9 +179,6 @@ if __name__ == '__main__':
         else:
             details_dict[key] = val
             assert val[-3:] == 'csv', 'File must be .csv'
-    pir = PIRO_2015(details_dict)
-    pir.get_fitted_values()
-    swBSG = SW_BSG(details_dict)
-    swBSG.get_fitted_values()
-    swRSG = SW_RSG(details_dict)
-    swRSG.get_fitted_values()
+
+    
+
