@@ -36,7 +36,7 @@ class supernova(object):
         self.set_mag_colname()
         self.set_flt_colname()
         self.set_date_colname()
-        self.magerr_colname = 'MAGERR'
+        self.set_magerr_colname()
 
         self.rmag_colname = 'RMAG'
         self.shift_date_colname = 'MJD_S'
@@ -55,6 +55,9 @@ class supernova(object):
 
     def set_mag_colname(self, name='MAG'):
         self.mag_colname = name
+
+    def set_magerr_colname(self, name ='MAGERR'):
+        self.magerr_colname = name
 
     def set_date_colname(self, name='MJD'):
         self.date_colname = name
@@ -225,6 +228,9 @@ class supernova(object):
         else:
             return self.fitted_params[2], self.fitted_errors[2]
 
+    def write_to_file(self):
+        
+
     def plot_given_parameters(self, Re, Me, ve=None, of=0, errorbar=None, shift=False):
         # print(f'Best radius = {Re}, err')
         # print(f'Best mass = {Me}')
@@ -248,6 +254,7 @@ class supernova(object):
             offset = build_offset(n)
         else:
             offset = [0] * len(unique_filts)
+
         # HARDCODED
         for flt in self.filt_to_wvl:
             if flt in unique_filts:

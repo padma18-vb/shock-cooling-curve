@@ -135,6 +135,62 @@ class PIRO_2015(supernova):
         #f.show()
         #f.savefig('test.png')
 
+
+class PIRO_2020(supernova):
+
+    def L_P20(self,t, Me, Re, vt):
+        n = 10
+        kap = 0.34  # cm^2/g
+        K = 0.119
+        delta = 1.1
+        c = 3e10  # cm/s
+        msun = 1.989e+33  # g
+        rsun = 6.96e10  # cm
+
+
+        def Rall(t, Me, vt):
+            M = Me * msun
+            v = vt * 1e5
+            R = Re * rsun
+            R = []
+            tph = 1.1574e-5 * ((3 * kap * K * M) / (2 * (n - 1) * (v ** 2))) ** 0.5
+            for i in range(len(t)):
+                if t[i] <= tph:
+                    R.append(8.64e9 * ((tph / t) ** (2 / (n - 1))) * v * t)
+
+                elif t[i] >= tph:
+                    R.append(8.64e9 * (((((delta - 1) / (n - 1)) * ((t ** 2 / tph ** 2) - 1)) + 1) ** (
+                                -1 / (delta - 1))) * v * t)
+
+            return np.asarray(R)
+
+        def Lall(t, Me, Re, vt):
+            M = Me * msun
+            v = vt * 1e5
+            R = Re * rsun
+
+            L = []
+            td = 1.1574e-5 * ((3 * kap * K * M) / ((n - 1) * v * c)) ** 0.5
+
+            for i in range(len(t)):
+                if t[i] <= td:
+                    L.append((np.pi / 3) * ((n - 1) / (n - 5)) * ((c * R * v ** 2) / kap) * (td / t) ** (4 / (n - 2)))
+
+                elif t[i] >= td:
+                    L.append((np.pi / 3) * ((n - 1) / (n - 5)) * ((c * R * v ** 2) / kap) * np.exp(
+                        -0.5 * ((t ** 2 / td ** 2) - 1)))
+
+            return np.asarray(L)
+
+        def Tall(t, Me, Re, vt):
+
+            return (Lall(t, Me, Re, vt) / (4. * np.pi * (Rall(t, Me, vt) ** 2) * sigma)) ** 0.25
+
+        R = Rall(t, Me, vt)
+        T = Tall(t, Me, Re, vt)
+
+        return np.asarray([R, T])
+
 def parse_args():
     """
     Handle the command line arguments.
@@ -180,5 +236,5 @@ if __name__ == '__main__':
             details_dict[key] = val
             assert val[-3:] == 'csv', 'File must be .csv'
 
-    
+
 
